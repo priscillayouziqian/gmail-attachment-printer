@@ -21,3 +21,8 @@ yarn-error.log*
 # Common editor directories
 .vscode/
 .idea/
+
+# hide actual english assignments from data/attachments
+data/attachments/*.pdf
+data/attachments/*.docx
+data/attachments/*.doc
