@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { Document, Packer, Paragraph, TextRun } from "docx";
 // Import our custom function to get an authenticated Gmail API client.
 import { getGmailClient } from "./gmailClient.js";
 
@@ -87,6 +88,38 @@ export async function fetchEmails(maxResults = 10) {
     }
     const emailBody = getBody(payload.parts);
     const youtubeLinks = [...new Set(emailBody.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11})/g) || [])];
+
+    // --- NEW: If YouTube links exist, create a .docx summary file ---
+    if (youtubeLinks.length > 0 && emailBody) {
+      // Sanitize the email subject to create a safe filename.
+      const sanitizedSubject = subject.replace(/[\\?%*:|"<>]/g, '-').slice(0, 50);
+      const docxFilename = `${sanitizedSubject}_summary.docx`;
+      const docxFilePath = path.join(dateSpecificDir, docxFilename);
+
+      // Create a new Document.
+      const doc = new Document({
+        sections: [{
+          children: [
+            // Add the email body text.
+            new Paragraph({ text: emailBody }),
+            // Add a blank line for spacing.
+            new Paragraph({ text: "" }),
+            // Add a bolded heading for the links section.
+            new Paragraph({
+              children: [new TextRun({ text: "Assignment Links:", bold: true })],
+            }),
+            // Add each YouTube link as a new paragraph.
+            ...youtubeLinks.map(link => new Paragraph({ text: link })),
+          ],
+        }],
+      });
+
+      // Use the Packer to convert the document into a buffer that can be saved.
+      const buffer = await Packer.toBuffer(doc);
+      // Write the buffer to the file system.
+      fs.writeFileSync(docxFilePath, buffer);
+      console.log(`- Created summary document: "${docxFilename}"`);
+    }
 
     // This array will hold information about attachments found in this specific email.
     const attachments = [];
