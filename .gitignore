@@ -22,7 +22,6 @@ yarn-error.log*
 .vscode/
 .idea/
 
-# hide actual english assignments from data/attachments
-data/attachments/*.pdf
-data/attachments/*.docx
-data/attachments/*.doc
+# Ignore all downloaded attachments and generated documents.
+# This covers all subdirectories and file types within the attachments folder.
+/data/attachments/
