@@ -57,6 +57,37 @@ export async function fetchEmails(maxResults = 10) {
     const date = headers.find(h => h.name === "Date")?.value || "";
     const subject = headers.find(h => h.name === "Subject")?.value || "";
 
+    // --- NEW: Create a date-stamped folder for attachments ---
+    // Create a standardized folder name like "2025-12-09" from the email's date.
+    const emailDate = new Date(date);
+    const dateFolderName = emailDate.toISOString().split('T')[0]; // Gets YYYY-MM-DD
+    const dateSpecificDir = path.join(ATTACH_DIR, dateFolderName);
+
+    // Ensure this date-specific directory exists before saving files into it.
+    // This is only created once per unique date.
+    fs.mkdirSync(dateSpecificDir, { recursive: true });
+
+    // --- NEW FEATURE: Extract YouTube links from the email body ---
+    // This function recursively searches through email parts to find the body content.
+    function getBody(parts = []) {
+      let body = "";
+      for (const part of parts) {
+        if (part.mimeType === 'text/plain' && part.body.data) {
+          // Prefer plain text body if available.
+          return Buffer.from(part.body.data, 'base64').toString();
+        } else if (part.mimeType === 'text/html' && part.body.data) {
+          // Use HTML body as a fallback.
+          body = Buffer.from(part.body.data, 'base64').toString();
+        } else if (part.parts) {
+          // If parts have sub-parts, search deeper.
+          return getBody(part.parts);
+        }
+      }
+      return body;
+    }
+    const emailBody = getBody(payload.parts);
+    const youtubeLinks = [...new Set(emailBody.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11})/g) || [])];
+
     // This array will hold information about attachments found in this specific email.
     const attachments = [];
 
@@ -67,8 +98,8 @@ export async function fetchEmails(maxResults = 10) {
       // An attachment part will have a 'filename' and an 'attachmentId' in its body.
       if (part.filename && part.body && part.body.attachmentId) {
         const attachmentId = part.body.attachmentId;
-        // Create the full local path where we will save the file.
-        const filePath = path.join(ATTACH_DIR, part.filename);
+        // Create the full local path inside the new date-specific folder.
+        const filePath = path.join(dateSpecificDir, part.filename);
 
         // --- IMPROVEMENT ---
         // Check if the file already exists. If so, skip downloading it again.
@@ -109,7 +140,8 @@ export async function fetchEmails(maxResults = 10) {
       from,
       date,
       subject,
-      attachments
+      attachments,
+      youtubeLinks // Add the found YouTube links to the final object.
     });
   }
 

@@ -1,4 +1,3 @@
-// test/run-fetch.js
 import { fetchEmails } from "../src/email/fetchEmails.js";
 
 /**
