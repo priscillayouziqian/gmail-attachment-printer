@@ -23,8 +23,8 @@ export async function fetchEmails(maxResults = 10) {
 
   // We're looking for emails that are:
   // 1. from the teacher's email address
-  // 2. have an attachment
-  const query = `from:${teacherEmail} has:attachment newer_than:7d`;
+  // 2. sent in the last 2 days (we will filter for content later)
+  const query = `from:${teacherEmail} newer_than:2d`;
 
   // Call the Gmail API to list all messages that match our query.
   const res = await gmail.users.messages.list({
@@ -63,17 +63,32 @@ export async function fetchEmails(maxResults = 10) {
 
     // Use our specialized modules to process the email content.
     const { body, youtubeLinks } = parseEmailBody(payload);
-    await generateSummaryDocx(subject, body, youtubeLinks, dateSpecificDir);
+    
+    // Generate the summary doc and get its path (if created).
+    const summaryFilePath = await generateSummaryDocx(subject, body, youtubeLinks, dateSpecificDir);
+    
     const attachments = await handleAttachments(gmail, msg.id, payload.parts, dateSpecificDir);
 
-    messages.push({
-      id: msg.id,
-      from,
-      date,
-      subject,
-      attachments,
-      youtubeLinks,
-    });
+    // If a summary file was created, add it to the attachments list so it gets printed.
+    if (summaryFilePath) {
+      attachments.push({
+        name: path.basename(summaryFilePath),
+        localPath: summaryFilePath,
+        type: "docx"
+      });
+    }
+
+    // Only add the email to our list if it has attachments or a generated summary.
+    if (attachments.length > 0) {
+      messages.push({
+        id: msg.id,
+        from,
+        date,
+        subject,
+        attachments,
+        youtubeLinks,
+      });
+    }
   }
 
   // After processing all emails, return the array of message objects.

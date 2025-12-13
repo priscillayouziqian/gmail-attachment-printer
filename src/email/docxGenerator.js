@@ -11,7 +11,7 @@ import { Document, Packer, Paragraph, TextRun } from "docx";
  */
 export async function generateSummaryDocx(subject, body, links, directory) {
   if (!links || links.length === 0 || !body) {
-    return;
+    return null;
   }
 
   // Sanitize the email subject to create a safe filename.
@@ -37,4 +37,5 @@ export async function generateSummaryDocx(subject, body, links, directory) {
   // Write the buffer to the file system.
   fs.writeFileSync(docxFilePath, buffer);
   console.log(`- Created summary document: "${docxFilename}"`);
+  return docxFilePath;
 }

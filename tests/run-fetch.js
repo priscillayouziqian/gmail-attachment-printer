@@ -5,7 +5,7 @@ import { fetchEmails } from "../src/email/fetchEmails.js";
  * and see its output.
  */
 async function runTest() {
-  console.log("🚀 Starting email fetch process...");
+  console.log("🚀 Starting email fetch process (Attachments & YouTube Links)...");
 
   try {
     // Call the main function to find and download attachments.

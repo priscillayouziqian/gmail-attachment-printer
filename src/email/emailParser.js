@@ -8,9 +8,12 @@ function getBody(parts = []) {
   let body = "";
   for (const part of parts) {
     if (part.mimeType === 'text/plain' && part.body.data) {
-      return Buffer.from(part.body.data, 'base64').toString();
+      // Gmail API uses URL-safe Base64. Replace '-' with '+' and '_' with '/' to be safe.
+      const text = Buffer.from(part.body.data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+      // Only return if we actually found text, otherwise keep looking (e.g. for HTML).
+      if (text.trim()) return text;
     } else if (part.mimeType === 'text/html' && part.body.data) {
-      body = Buffer.from(part.body.data, 'base64').toString();
+      body = Buffer.from(part.body.data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
     } else if (part.parts) {
       // If parts have sub-parts, search deeper.
       const nestedBody = getBody(part.parts);
