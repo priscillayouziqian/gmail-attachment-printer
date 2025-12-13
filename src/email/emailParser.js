@@ -35,12 +35,47 @@ function extractYoutubeLinks(text) {
 }
 
 /**
+ * Removes forwarded email headers (English and Chinese) from the body text.
+ * @param {string} text - The raw email body.
+ * @returns {string} The cleaned body text.
+ */
+function cleanEmailBody(text) {
+  const lines = text.split('\n');
+  const cleanedLines = [];
+  let isSkipping = false;
+
+  // Regex to detect the start of a forwarded block (e.g., ---------- 转发的邮件 ---------)
+  const forwardStartRegex = /^-+\s*(?:Forwarded message|转发的邮件)\s*-+/i;
+  // Regex to detect header lines (From, Date, Subject, To, Cc in English or Chinese)
+  const headerRegex = /^(?:From|Date|Subject|To|Cc|发件人|日期|主题|收件人)[：:]/i;
+
+  for (const line of lines) {
+    if (forwardStartRegex.test(line)) {
+      isSkipping = true;
+      continue;
+    }
+
+    if (isSkipping) {
+      // If we are in the header block, skip header lines and empty lines.
+      if (headerRegex.test(line) || line.trim() === "") {
+        continue;
+      }
+      // Found the start of the actual message.
+      isSkipping = false;
+    }
+    cleanedLines.push(line);
+  }
+  return cleanedLines.join('\n').trim();
+}
+
+/**
  * Parses the email payload and extracts key information.
  * @param {object} payload - The email payload object from the Gmail API.
  * @returns {object} An object containing the body and youtubeLinks.
  */
 export function parseEmailBody(payload) {
-  const body = getBody(payload.parts);
+  const rawBody = getBody(payload.parts);
+  const body = cleanEmailBody(rawBody);
   const youtubeLinks = extractYoutubeLinks(body);
   return { body, youtubeLinks };
 }
